@@ -1,22 +1,50 @@
 #include <iostream>
 #include "Server.h"
-
+#include "json.hpp"
 #include <sstream>
 
-std::string ExtractBody(const std::string_view s)
+using nlohmann::json;
+
+json JsonRequest(const std::string_view httpRequest)
 {
-    const int fix = s.find("\n\r");
-    if (fix == -1)
+    auto fix = httpRequest.find("\n\r");
+    try
     {
+        return (fix == -1 || (fix += 3) >= size(httpRequest)) ?
+            json() : json::parse(httpRequest.substr(fix));
+    }
+    catch (const std::exception &e)
+    {
+        std::cout << "\n" << httpRequest << "\n\n" << e.what() << "\n" << std::endl;
         return {};
     }
-    return std::string(s).substr(fix, 12);
+}
+
+std::string HttpResponse(const json &jsonObject)
+{
+    std::stringstream jsonStream;
+    jsonStream << jsonObject;
+    const auto body = jsonStream.str();
+    std::stringstream response;
+    response <<
+        "HTTP/1.1 200 OK\r\n"
+        "Version: HTTP/1.1\r\n"
+        "Content-Type: application/json; charset=utf-8\r\n"
+        "Content-Length: " << size(body)
+        << "\r\n\r\n" << body;
+    return response.str();
 }
 
 int main()
 {
-    Server::Start([](const std::string_view req)
+    std::cout << json(nullptr);
+    /*Server::Start([](const std::string_view request)
         {
-            return ExtractBody(req);
-        });
+            const auto object = JsonRequest(request);
+            
+            
+            const auto response = HttpResponse(
+                { {"All", "IsOkey"} });
+            return response;
+        });*/
 }
